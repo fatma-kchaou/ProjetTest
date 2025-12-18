@@ -1,0 +1,218 @@
+﻿@page "/Salles"
+@inject SallesServices sallesServices
+@inject SalleReservationsServices salleReservationsServices
+@inject NavigationManager NavigationManager
+@inject AuthServices AuthServices
+@attribute [Authorize]
+
+<PageTitle>Salles de Lecture</PageTitle>
+
+<div class="container my-5">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <h1 class="display-6 fw-bold text-success">
+            <i class="fas fa-door-open me-3"></i> Salles Disponibles
+        </h1>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <a href="/Salles/Create" class="btn btn-success btn-lg shadow-sm">
+                    <i class="fas fa-plus me-2"></i> Nouvelle salle
+                </a>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+    
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <div class="alert @(isSuccess ? "alert-success" : "alert-danger") alert-dismissible fade show">
+            @message
+            <button type="button" class="btn-close" @onclick="() => message = string.Empty"></button>
+        </div>
+    }
+    
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-success" role="status">
+                <span class="visually-hidden">Chargement des salles...</span>
+            </div>
+            <p class="mt-3 text-muted">Chargement des salles...</p>
+        </div>
+    }
+    else if (!Salles.Any())
+    {
+        <div class="alert alert-info text-center py-5">
+            <i class="fas fa-info-circle fa-3x mb-3"></i>
+            <h4>Aucune salle enregistrée pour le moment</h4>
+            <p>Commencez par ajouter votre première salle de lecture.</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var salle in Salles)
+            {
+                <div class="col-md-6 col-lg-4 col-xl-3">
+                    <div class="card h-100 shadow hover-lift border-0">
+                        <div class="card-body text-center p-4">
+                            <i class="fas fa-door-open fa-4x text-success mb-4"></i>
+                            <h4 class="card-title fw-bold">@salle.SalleName</h4>
+                            <p class="display-6 fw-bold text-primary mb-1">@salle.Capacity</p>
+                            <p class="text-muted mb-3">places assises</p>
+                            <span class="badge @(salle.IsAvailable ? "bg-success" : "bg-danger") fs-6 px-3 py-2 mb-3">
+                                <i class="fas @(salle.IsAvailable ? "fa-check" : "fa-times") me-1"></i> @(salle.IsAvailable ? "Disponible" : "Occupée")
+                            </span>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 p-3">
+                            <div class="d-grid gap-2">
+                                <a href="/Salles/Details/@salle.SalleID" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-eye me-1"></i> Détails
+                                </a>
+                                @if (salle.IsAvailable)
+                                {
+                                    <button class="btn btn-success btn-sm" @onclick="() => OpenReservationModal(salle)" disabled="@isProcessing">
+                                        <i class="fas fa-calendar-check me-1"></i> 🗓️ Réserver
+                                    </button>
+                                }
+                                <AuthorizeView Roles="Admin">
+                                    <Authorized Context="authContext">
+                                        <a href="/Salles/Edit/@salle.SalleID" class="btn btn-outline-warning btn-sm">
+                                            <i class="fas fa-edit me-1"></i> Modifier
+                                        </a>
+                                    </Authorized>
+                                </AuthorizeView>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@* Modal for Reservation *@
+@if (showReservationModal && selectedSalle != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">🗓️ Réserver la salle</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseReservationModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <h6 class="fw-bold">@selectedSalle.SalleName</h6>
+                        <p class="text-muted">Capacité: @selectedSalle.Capacity personnes</p>
+                    </div>
+                    <hr />
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Date de réservation</label>
+                        <input type="date" class="form-control" @bind="reservationDate" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    </div>
+                    @if (!string.IsNullOrEmpty(modalError))
+                    {
+                        <div class="alert alert-danger">@modalError</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseReservationModal">Annuler</button>
+                    <button type="button" class="btn btn-success" @onclick="ConfirmReservation" disabled="@isProcessing">
+                        @if (isProcessing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        Confirmer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    public List<Salle> Salles { get; set; } = new();
+    private bool isLoading = true;
+    private string message = string.Empty;
+    private bool isSuccess = false;
+    private bool isProcessing = false;
+
+    // Modal state
+    private bool showReservationModal = false;
+    private Salle? selectedSalle = null;
+    private DateTime reservationDate = DateTime.Today;
+    private string modalError = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Salles = await sallesServices.GetSallesAsync() ?? new List<Salle>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur chargement salles : {ex.Message}");
+            Salles = new List<Salle>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OpenReservationModal(Salle salle)
+    {
+        selectedSalle = salle;
+        reservationDate = DateTime.Today;
+        modalError = string.Empty;
+        showReservationModal = true;
+    }
+
+    private void CloseReservationModal()
+    {
+        showReservationModal = false;
+        selectedSalle = null;
+        modalError = string.Empty;
+    }
+
+    private async Task ConfirmReservation()
+    {
+        if (selectedSalle == null) return;
+
+        isProcessing = true;
+        modalError = string.Empty;
+
+        try
+        {
+            var reservation = new SalleReservation
+            {
+                SalleId = selectedSalle.SalleID,
+                SalleReservationName = selectedSalle.SalleName,
+                ReservedAt = reservationDate
+            };
+            
+            var result = await salleReservationsServices.CreateSalleReservation(reservation);
+            
+            if (result != null)
+            {
+                message = $"Salle réservée avec succès pour le {reservationDate.ToShortDateString()} !";
+                isSuccess = true;
+                CloseReservationModal();
+                // Refresh is optional here since we didn't change the salle status globally
+            }
+            else
+            {
+                modalError = "La salle est déjà réservée pour cette date ou une erreur est survenue.";
+            }
+        }
+        catch (Exception ex)
+        {
+            modalError = "Impossible de réserver: " + ex.Message;
+            // Often the API returns a standard error message we might want to parse
+            // But for now, generic error handling
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+}

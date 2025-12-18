@@ -1,0 +1,144 @@
+﻿@page "/Categories/Create"
+@attribute [Authorize(Roles = "Admin")]
+@inject NavigationManager NavigationManager
+@inject CategoriesServices categoriesServices
+@inject ILocalStorageService LocalStorage
+@using Blazored.LocalStorage
+@inject AuthServices AuthServices
+
+<PageTitle>Créer une Catégorie</PageTitle>
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Admin">
+        <Authorized Context="authContext">
+<div class="container my-5">
+    <h3 class="text-center mb-4 text-success">➕ Créer une nouvelle Catégorie</h3>
+
+
+    <EditForm Model="Category" OnValidSubmit="handleSubmit" class="p-4 border rounded shadow-sm">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="mb-3">
+            <label class="form-label">Nom Catégorie</label>
+            <InputText @bind-Value="Category.CategoryName" class="form-control" required></InputText>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Description</label>
+            <InputTextArea @bind-Value="Category.Description" class="form-control"></InputTextArea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Image (URL)</label>
+
+            <div class="input-group">
+                <InputText @bind-Value="Category.Image"
+                           class="form-control"
+                           placeholder="Collez une URL ou choisissez une image" />
+
+                <label class="btn btn-outline-secondary input-group-text">
+                    Choisir une image
+                    <InputFile OnChange="OnFileSelected"
+                               accept="image/*"
+                               style="display: none;" />
+                </label>
+            </div>
+
+            <div class="form-text text-muted small">
+                Collez une URL externe ou sélectionnez une image depuis votre ordinateur pour voir un aperçu.
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Category.Image))
+            {
+                <div class="mt-3 text-center">
+                    <strong>Aperçu :</strong>
+                    <img src="@Category.Image"
+                         alt="Prévisualisation"
+                         class="img-fluid rounded shadow-sm"
+                         style="max-height: 300px; border: 1px solid #ddd;"
+                         onerror="this.src='https://via.placeholder.com/300x200?text=Image+non+valide'; this.onerror=null;" />
+                </div>
+            }
+        </div>
+        <button type="submit" class="btn btn-success w-100">Créer la Catégorie</button>
+    </EditForm>
+
+</div>
+    </Authorized>
+    <NotAuthorized>
+            <div class="container my-5 text-center">
+                <div class="alert alert-danger shadow-lg p-5">
+                    <h2 class="text-danger mb-4">🚫 Accès refusé</h2>
+                    <p class="lead">
+                        Vous n'avez pas les droits nécessaires pour accéder à cette page.
+                    </p>
+                    <p>
+                        Seuls les administrateurs peuvent voir le tableau de bord.
+                    </p>
+                    <NavLink class="btn btn-primary btn-lg mt-3" href="/login">
+                        Se connecter
+                    </NavLink>
+
+                </div>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+
+    public Category Category { get; set; } = new Category();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var token = await LocalStorage.GetItemAsync<string>("token");
+    }
+
+    public async Task handleSubmit()
+    {
+
+        var result = await categoriesServices.CreateCategory(Category);
+        if (result != null)
+            NavigationManager.NavigateTo("/Categories");
+
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+
+        if (file != null)
+        {
+            // Limite raisonnable pour éviter les fichiers trop gros (ex: 5 Mo)
+            if (file.Size > 5 * 1024 * 1024)
+            {
+                // Optionnel : afficher un message d'erreur
+                // Vous pouvez ajouter un message visible à l'utilisateur ici
+                return;
+            }
+
+            try
+            {
+                // Lire le fichier en mémoire
+                var buffer = new byte[file.Size];
+                await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).ReadAsync(buffer);
+
+                // Convertir en base64
+                var base64String = Convert.ToBase64String(buffer);
+                var mimeType = file.ContentType; // ex: image/png, image/jpeg
+
+                // Créer le data URL
+                var dataUrl = $"data:{mimeType};base64,{base64String}";
+
+                // Assigner à Category.Image pour la prévisualisation
+                Category.Image = dataUrl;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors de la lecture du fichier : {ex.Message}");
+                // Optionnel : afficher un message d'erreur à l'utilisateur
+            }
+        }
+    }
+    private async Task Logout()
+    {
+        await AuthServices.Logout();
+        NavigationManager.NavigateTo("/login", forceLoad: true);
+    }
+}

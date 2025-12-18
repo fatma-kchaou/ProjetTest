@@ -1,0 +1,202 @@
+﻿@page "/livres"
+@inject LivresServices livresServices
+@inject BorrowRecordsServices borrowRecordsServices
+@inject NavigationManager navigationManager
+
+<PageTitle>Nos Livres</PageTitle>
+
+<div class="container my-5">
+   
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="text-primary fw-bold">📚 Catalogue des Livres</h1>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <a href="/Livres/Create" class="btn btn-success"><i class="fas fa-plus"></i> Ajouter un livre</a>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+   
+    @if (Livres == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-3">Chargement du catalogue...</p>
+        </div>
+    }
+    else if (!Livres.Any())
+    {
+        <div class="alert alert-info text-center py-5">
+            <i class="fas fa-info-circle fa-3x mb-3"></i>
+            <h4>Aucun livre disponible pour le moment</h4>
+        </div>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(message))
+        {
+            <div class="alert @(isSuccess ? "alert-success" : "alert-danger") alert-dismissible fade show">
+                @message
+                <button type="button" class="btn-close" @onclick="() => message = string.Empty"></button>
+            </div>
+        }
+        <div class="row g-4">
+            @foreach (var livre in Livres)
+            {
+                <div class="col-md-6 col-lg-4 col-xl-3">
+                    <div class="card h-100 shadow-sm border-0 hover-lift">
+                        <img src="@(string.IsNullOrEmpty(livre.Image) ? "/images/default-book.jpg" : livre.Image)"
+                             class="card-img-top" style="height: 300px; object-fit: cover;" alt="@livre.Title">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title fw-bold">@livre.Title</h5>
+                            <p class="card-text text-muted"><strong>Auteur :</strong> @livre.Author</p>
+                            <p class="card-text"><strong>Année :</strong> @livre.Year</p>
+                            <p class="card-text">
+                                <span class="badge bg-primary">@livre.Category?.CategoryName</span>
+                                @if (livre.IsBorrowed)
+                                {
+                                    <span class="badge bg-danger ms-2">Emprunté</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success ms-2">Disponible</span>
+                                }
+                            </p>
+                            <div class="mt-auto d-grid gap-2">
+                                <a href="/Livres/Details/@livre.LivreID" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-eye me-1"></i> Détails
+                                </a>
+                                 <AuthorizeView>
+                                  <Authorized>
+                                @if (!livre.IsBorrowed)
+                                {
+                                    <button class="btn btn-success btn-sm" @onclick="() => OpenBorrowModal(livre)" disabled="@isProcessing">
+                                        <i class="fas fa-book-reader me-1"></i> 📖 Emprunter
+                                    </button>
+                                }
+                                    </Authorized>
+                                </AuthorizeView>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@* Modal for Borrow *@
+@if (showBorrowModal && selectedLivre != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">📖 Emprunter un livre</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseBorrowModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <h6 class="fw-bold">@selectedLivre.Title</h6>
+                        <p class="text-muted">par @selectedLivre.Author</p>
+                    </div>
+                    <hr />
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Date d'emprunt</label>
+                        <input type="date" class="form-control" @bind="borrowDate" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Date de retour prévue</label>
+                        <input type="date" class="form-control" @bind="returnDate" min="@borrowDate.ToString("yyyy-MM-dd")" />
+                    </div>
+                    @if (!string.IsNullOrEmpty(modalError))
+                    {
+                        <div class="alert alert-danger">@modalError</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseBorrowModal">Annuler</button>
+                    <button type="button" class="btn btn-success" @onclick="ConfirmBorrow" disabled="@isProcessing">
+                        @if (isProcessing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        Confirmer l'emprunt
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    public List<Livre> Livres { get; set; } = new();
+    private string message = string.Empty;
+    private bool isSuccess = false;
+    private bool isProcessing = false;
+
+    // Modal state
+    private bool showBorrowModal = false;
+    private Livre? selectedLivre = null;
+    private DateTime borrowDate = DateTime.Today;
+    private DateTime returnDate = DateTime.Today.AddDays(14);
+    private string modalError = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Livres = await livresServices.GetLivresAsync();
+    }
+
+    private void OpenBorrowModal(Livre livre)
+    {
+        selectedLivre = livre;
+        borrowDate = DateTime.Today;
+        returnDate = DateTime.Today.AddDays(14);
+        modalError = string.Empty;
+        showBorrowModal = true;
+    }
+
+    private void CloseBorrowModal()
+    {
+        showBorrowModal = false;
+        selectedLivre = null;
+        modalError = string.Empty;
+    }
+
+    private async Task ConfirmBorrow()
+    {
+        if (selectedLivre == null) return;
+
+        if (returnDate < borrowDate)
+        {
+            modalError = "La date de retour doit être après la date d'emprunt.";
+            return;
+        }
+
+        isProcessing = true;
+        modalError = string.Empty;
+
+        try
+        {
+            var success = await borrowRecordsServices.BorrowWithDates(selectedLivre.LivreID, borrowDate, returnDate);
+            if (success)
+            {
+                message = $"Livre '{selectedLivre.Title}' emprunté avec succès !";
+                isSuccess = true;
+                CloseBorrowModal();
+                Livres = await livresServices.GetLivresAsync(); // Refresh
+            }
+            else
+            {
+                modalError = "Échec de l'emprunt. Veuillez réessayer.";
+            }
+        }
+        catch (Exception ex)
+        {
+            modalError = $"Erreur: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+}

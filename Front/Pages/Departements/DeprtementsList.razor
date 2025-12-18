@@ -1,0 +1,40 @@
+﻿@page "/Departements"
+@inject NavigationManager navigationManager
+@inject DepartementsServices departementsServices
+<h3>DeprtementsList</h3>
+<button @onclick="CreateDepartement">Creer Departement</button>
+<table class="table table-bordered">
+    <tr>
+        <td>Nom Departement</td><td>Actions</td>
+    </tr>
+    @foreach (var item in Departements)
+    {
+        <tr>
+            <td>@item.DepartementName</td>
+            <td><button @onclick="()=>DeleteDep(item.DepartementID)">Supprimer</button></td>
+        </tr>
+    }
+</table>
+@code {
+    public async Task DeleteDep(int id)
+    {
+        var result = await departementsServices.DeleteDepartement(id);
+        if (result)
+         await   LoadDepartement();
+    }
+    public void CreateDepartement()
+    {
+        navigationManager.NavigateTo("/Departements/Create");
+    }
+    public List<Departement> Departements { get; set; } = new List<Departement>();
+
+    protected async override Task OnInitializedAsync()
+    {
+        await LoadDepartement();
+    }
+
+    public async Task LoadDepartement()
+    {
+        Departements = await departementsServices.GetDepartementsAsync();
+    }
+}

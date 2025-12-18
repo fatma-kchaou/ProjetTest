@@ -1,0 +1,84 @@
+﻿@page "/Salles/Create" 
+@attribute [Authorize(Roles = "Admin")]
+@inject NavigationManager NavigationManager
+@inject SallesServices sallesServices
+@inject AuthServices AuthServices
+
+<PageTitle>Ajouter une Salle</PageTitle>
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Admin">
+        <Authorized Context="authContext">
+<div class="container my-5">
+    <div class="card shadow-lg mx-auto" style="max-width: 700px;">
+        <div class="card-body p-5">
+            <h3 class="text-center mb-4 text-primary fw-bold">➕ Ajouter une nouvelle Salle</h3>
+
+           
+            
+            <EditForm Model="Salle" OnValidSubmit="handleSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="alert alert-danger" />
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Nom de Salle <span class="text-danger">*</span></label>
+                    <InputText @bind-Value="Salle.SalleName" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Capacité <span class="text-danger">*</span></label>
+                    <InputNumber @bind-Value="Salle.Capacity" class="form-control" />
+                </div>
+
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save"></i> Créer la Salle
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+        </Authorized>
+
+        <NotAuthorized>
+            <div class="container my-5 text-center">
+                <div class="alert alert-danger shadow-lg p-5">
+                    <h2 class="text-danger mb-4">🚫 Accès refusé</h2>
+                    <p class="lead">
+                        Vous n'avez pas les droits nécessaires pour accéder à cette page.
+                    </p>
+                    <p>
+                        Seuls les administrateurs peuvent voir le tableau de bord.
+                    </p>
+                    <NavLink class="btn btn-primary btn-lg mt-3" href="/login">
+                        Se connecter
+                    </NavLink>
+                </div>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+@code {
+    public Salle Salle { get; set; } = new Salle
+
+  {
+        IsAvailable = true
+    };
+
+    private async Task handleSubmit()
+    {
+        var result = await sallesServices.CreateSalle(Salle);
+        if (result != null)
+        {
+            NavigationManager.NavigateTo("/Salles");
+        }
+        
+           
+    }
+    private async Task Logout()
+    {
+        await AuthServices.Logout();
+        NavigationManager.NavigateTo("/login", forceLoad: true);
+    }
+}

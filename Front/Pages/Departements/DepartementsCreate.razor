@@ -1,0 +1,21 @@
+﻿@page "/Departements/Create"
+@inject NavigationManager navigationManager
+@inject DepartementsServices DepartementsServices
+<h3>DepartementsCreate</h3>
+<EditForm Model="Departement" OnValidSubmit="handleSubmit">
+    <div class="mb-3">
+        <label>Nom</label> 
+    <InputText @bind-Value="Departement.DepartementName"></InputText>
+    </div>
+    <button type="submit">Créer</button>
+</EditForm>
+@code {
+    public Departement Departement { get; set; } = new Departement();
+    public async Task handleSubmit()
+    {
+        var result = await DepartementsServices.CreateDepartement(Departement);
+        if (result != null)
+            navigationManager.NavigateTo("/Departements");
+
+    }
+}

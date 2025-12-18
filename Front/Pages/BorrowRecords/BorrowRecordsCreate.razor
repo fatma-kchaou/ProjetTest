@@ -1,0 +1,84 @@
+﻿@page "/BorrowRecords/Create"
+@attribute [Authorize(Roles = "Admin,Client")]
+@inject NavigationManager NavigationManager
+@inject BorrowRecordsServices BorrowRecordsServices
+@inject LivresServices LivresServices
+@inject AuthServices AuthServices
+
+<PageTitle>Créer un emprunt</PageTitle>
+<CascadingAuthenticationState>
+        <AuthorizeView>
+
+        <Authorized Context="authContext">
+<div class="container my-5">
+    <h3 class="text-center mb-4 text-success">Créer un emprunt de livre</h3>
+
+    
+        <EditForm Model="BorrowRecord" OnValidSubmit="HandleSubmit">
+            <div class="mb-3">
+                <label class="form-label">Livre à emprunter</label>
+                <InputSelect @bind-Value="BorrowRecord.LivreID" class="form-select">
+                    <option value="0">-- Sélectionner un livre --</option>
+                    @foreach (var livre in Livres)
+                    {
+                        <option value="@livre.LivreID">@livre.Title - @livre.Author</option>
+                    }
+                </InputSelect>
+            </div>
+            <button type="submit" class="btn btn-success">Enregistrer</button>
+            <button type="button" class="btn btn-secondary" @onclick="Cancel">Annuler</button>
+        </EditForm>
+    
+</div>
+        </Authorized>
+
+        <NotAuthorized>
+            <div class="container my-5 text-center">
+                <div class="alert alert-danger shadow-lg p-5">
+                    <h2 class="text-danger mb-4">🚫 Accès refusé</h2>
+                    <p class="lead">
+                        Vous n'avez pas les droits nécessaires pour accéder à cette page.
+                    </p>
+                    <p>
+                        Seuls les utilisateurs connectée peuvent voir le tableau de bord.
+                    </p>
+                    <NavLink class="btn btn-primary btn-lg mt-3" href="/login">
+                        Se connecter
+                    </NavLink>
+                </div>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+
+</CascadingAuthenticationState>
+@code {
+    public BorrowRecord BorrowRecord { get; set; } = new();
+    public List<Livre> Livres { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        
+        Livres = await LivresServices.GetLivresAsync();
+    }
+
+    private async Task HandleSubmit()
+    {
+        BorrowRecord.BorrowDate = DateTime.UtcNow;
+        var result = await BorrowRecordsServices.CreateBorrowRecord(BorrowRecord);
+        if (result != null)
+        {
+            NavigationManager.NavigateTo("/BorrowRecords");
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/BorrowRecords");
+ 
+    }
+    private async Task Logout()
+    {
+        await AuthServices.Logout();
+        NavigationManager.NavigateTo("/login", forceLoad: true);
+    }
+}

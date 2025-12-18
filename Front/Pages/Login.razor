@@ -1,0 +1,79 @@
+﻿@page "/login"
+@inject AuthServices authServices
+@inject NavigationManager navigationManager
+@using metiers
+
+<PageTitle>Connexion - Bibliothèque Centrale</PageTitle>
+
+<!-- Fond blanc pour toute la page -->
+<div class="min-vh-100 d-flex align-items-center justify-content-center bg-white">
+    <div class="card shadow-lg border-0 rounded-4" style="max-width: 450px; width: 100%;">
+        <div class="card-body p-5">
+            <div class="text-center mb-4">
+                <i class="fas fa-book-open fa-4x text-primary mb-3"></i>
+                <h3 class="fw-bold text-primary">🔑 Connexion</h3>
+                <p class="text-muted">Accédez à votre espace Bibliothèque Centrale</p>
+            </div>
+
+            @if (!string.IsNullOrEmpty(erreurMessage))
+            {
+                <div class="alert alert-danger rounded-3">
+                    <i class="fas fa-exclamation-triangle"></i> @erreurMessage
+                </div>
+            }
+
+            <EditForm Model="LoginDTO" OnValidSubmit="login">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger mb-3" />
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Nom d'utilisateur</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-user text-primary"></i></span>
+                        <InputText @bind-Value="LoginDTO.Username" class="form-control"  />
+                    </div>
+                    <ValidationMessage For="@(() => LoginDTO.Username)" class="text-danger" />
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Mot de passe</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-lock text-primary"></i></span>
+                        <InputText type="password" @bind-Value="LoginDTO.Password" class="form-control" />
+                    </div>
+                    <ValidationMessage For="@(() => LoginDTO.Password)" class="text-danger" />
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg w-100 mb-3 shadow-sm">
+                    <i class="fas fa-sign-in-alt"></i> Se connecter
+                </button>
+            </EditForm>
+
+            <div class="text-center mt-3">
+                <p class="mb-0 text-muted">
+                    Pas encore de compte ?
+                    <a href="/register" class="fw-bold text-primary text-decoration-none">S'inscrire</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    public LoginDTO LoginDTO { get; set; } = new();
+    public string erreurMessage { get; set; } = string.Empty;
+
+    public async Task login()
+    {
+        erreurMessage = string.Empty;
+        var result = await authServices.login(LoginDTO);
+        if (result)
+        {
+            navigationManager.NavigateTo("/Livres", forceLoad: true);
+        }
+        else
+        {
+            erreurMessage = "Nom d'utilisateur ou mot de passe incorrect.";
+        }
+    }
+}

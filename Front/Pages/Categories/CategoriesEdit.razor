@@ -1,0 +1,98 @@
+﻿@page "/Categories/Edit/{Id:int}"
+@attribute [Authorize(Roles = "Admin")]
+@inject CategoriesServices CategoriesServices
+@inject NavigationManager NavigationManager
+@inject AuthServices AuthServices
+@inject AuthServices AuthServices
+
+<PageTitle>Modifier Catégorie</PageTitle>
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Admin">
+        <Authorized Context="authContext">
+<div class="container my-5">
+    <h3 class="text-center mb-4 text-warning">✏️ Modifier la Catégorie</h3>
+
+    @if (Category == null)
+    {
+        <p>Chargement...</p>
+    }
+    else
+    {
+        <EditForm Model="Category" OnValidSubmit="HandleSubmit" class="p-4 border rounded shadow-sm mx-auto" style="max-width: 600px;">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <label class="form-label">Nom</label>
+                <InputText @bind-Value="Category.CategoryName" class="form-control" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Description</label>
+                <InputTextArea @bind-Value="Category.Description" class="form-control" rows="4" />
+            </div>
+
+            <!-- Image actuelle -->
+            @if (!string.IsNullOrEmpty(Category.Image))
+            {
+                <div class="mb-3">
+                    <label class="form-label">Image actuelle</label><br />
+                    <img src="@Category.Image" style="max-height: 200px;" />
+                </div>
+            }
+
+            <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-secondary" @onclick="Cancel">Annuler</button>
+                <button type="submit" class="btn btn-success">Enregistrer</button>
+            </div>
+        </EditForm>
+    }
+</div>
+        </Authorized>
+
+        <NotAuthorized>
+            <div class="container my-5 text-center">
+                <div class="alert alert-danger shadow-lg p-5">
+                    <h2 class="text-danger mb-4">🚫 Accès refusé</h2>
+                    <p class="lead">
+                        Vous n'avez pas les droits nécessaires pour accéder à cette page.
+                    </p>
+                    <p>
+                        Seuls les administrateurs peuvent voir le tableau de bord.
+                    </p>
+                    <NavLink class="btn btn-primary btn-lg mt-3" href="/login">
+                        Se connecter
+                    </NavLink>
+                </div>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    [Parameter] public int Id { get; set; }
+    public Category? Category { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        
+        Category = await CategoriesServices.GetCategoryAsync(Id);
+    }
+
+    private async Task HandleSubmit()
+    {
+        var success = await CategoriesServices.UpdateCategory(Category!);
+        if (success)
+        {
+            NavigationManager.NavigateTo("/Categories/Details/" + Id);
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/Categories/Details/" + Id);
+    }
+    private async Task Logout()
+    {
+        await AuthServices.Logout();
+        NavigationManager.NavigateTo("/login", forceLoad: true);
+    }
+}

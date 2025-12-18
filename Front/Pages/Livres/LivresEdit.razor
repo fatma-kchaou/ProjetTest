@@ -1,0 +1,150 @@
+﻿@page "/Livres/Edit/{Id:int}"
+@attribute [Authorize(Roles = "Admin")]
+@inject LivresServices LivresServices
+@inject CategoriesServices CategoriesServices
+@inject NavigationManager NavigationManager
+@inject AuthServices AuthServices
+
+<PageTitle>Modifier un Livre</PageTitle>
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Admin">
+        <Authorized Context="authContext">
+<div class="container my-5">
+    <div class="card shadow-lg mx-auto" style="max-width: 700px;">
+        <div class="card-body p-5">
+            <h3 class="text-center mb-4 text-warning fw-bold">✏️ Modifier le Livre</h3>
+
+            @if (isLoading)
+            {
+                <div class="text-center py-4">
+                    <div class="spinner-border text-warning" role="status"></div>
+                </div>
+            }
+            else if (Livre == null)
+            {
+                <div class="alert alert-danger">Livre non trouvé.</div>
+            }
+            else
+            {
+                <EditForm Model="Livre" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="alert alert-danger" />
+
+                    <div class="mb-3">
+                        <label class="form-label">Titre</label>
+                        <InputText @bind-Value="Livre.Title" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Auteur</label>
+                        <InputText @bind-Value="Livre.Author" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Année</label>
+                        <InputNumber @bind-Value="Livre.Year" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Catégorie</label>
+                        <InputSelect @bind-Value="Livre.CategoryID" class="form-select">
+                            <option value="0">-- Choisir --</option>
+                            @foreach (var cat in Categories)
+                            {
+                                <option value="@cat.CategoryID">@cat.CategoryName</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <!-- Optionnel : changer l'image -->
+                    <div class="mb-3">
+                        <label class="form-label">Image actuelle</label><br />
+                        @if (!string.IsNullOrEmpty(Livre.Image))
+                        {
+                            <img src="@Livre.Image" style="max-height: 200px; object-fit: contain;" />
+                        }
+                        else
+                        {
+                            <p>Aucune image</p>
+                        }
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary" @onclick="Cancel">Annuler</button>
+                        <button type="submit" class="btn btn-success">Enregistrer</button>
+                    </div>
+                </EditForm>
+            }
+        </div>
+    </div>
+</div>
+        </Authorized>
+
+        <NotAuthorized>
+            <div class="container my-5 text-center">
+                <div class="alert alert-danger shadow-lg p-5">
+                    <h2 class="text-danger mb-4">🚫 Accès refusé</h2>
+                    <p class="lead">
+                        Vous n'avez pas les droits nécessaires pour accéder à cette page.
+                    </p>
+                    <p>
+                        Seuls les administrateurs peuvent voir le tableau de bord.
+                    </p>
+                    <NavLink class="btn btn-primary btn-lg mt-3" href="/login">
+                        Se connecter
+                    </NavLink>
+                </div>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+@code {
+    [Parameter] public int Id { get; set; }
+    public Livre? Livre { get; set; }
+    public List<Category> Categories { get; set; } = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Livre = await LivresServices.GetLivreAsync(Id);
+            Categories = await CategoriesServices.GetCategoriesAsync() ?? new();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+
+        try
+        {
+            Livre = await LivresServices.GetLivreAsync(Id);
+            Categories = await CategoriesServices.GetCategoriesAsync() ?? new();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+
+    private async Task HandleSubmit()
+    {
+        var success = await LivresServices.UpdateLivre(Livre!);
+        if (success)
+        {
+            NavigationManager.NavigateTo("/Livres/Details/" + Id);
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/Livres/Details/" + Id);
+    }
+    private async Task Logout()
+    {
+        await AuthServices.Logout();
+        NavigationManager.NavigateTo("/login", forceLoad: true);
+    }
+}

@@ -1,0 +1,97 @@
+﻿@page "/SalleReservations"
+@inject NavigationManager navigationManager
+@inject SalleReservationsServices salleReservationsServices
+@inject SallesServices sallesServices
+@attribute [Authorize]
+
+<PageTitle>Mes Réservations de Salles</PageTitle>
+
+<div class="container my-5">
+    <h3 class="text-center mb-4 text-primary">🗓️ Liste de mes réservations de salles</h3>
+
+
+    @if (SalleReservations == null || Salles == null)
+    {
+        <p><em>Chargement...</em></p>
+    }
+    else if (!SalleReservations.Any())
+    {
+        <p class="text-muted text-center">Aucune réservation pour le moment.</p>
+    }
+    else
+    {
+        <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>Salle</th>
+                    <th>Réservé le</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in SalleReservations)
+                {
+                    <tr>
+                        <td>@GetSalleName(item.SalleId)</td>
+                        <td>@item.ReservedAt.ToShortDateString()</td>
+                        <td>
+                            <span class="badge @(item.ReleasedAt.HasValue ? "bg-success" : "bg-primary")">
+                                @(item.ReleasedAt.HasValue ? "Terminée" : "Active")
+                            </span>
+                        </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="/SalleReservations/Details/@item.SalleReservationID" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="/SalleReservations/Edit/@item.SalleReservationID" class="btn btn-outline-warning btn-sm">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="btn btn-danger btn-sm" @onclick="() => DeleteDep(item.SalleReservationID)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code
+{
+    public List<SalleReservation> SalleReservations { get; set; } = new();
+    public List<Salle> Salles { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Salles = await sallesServices.GetSallesAsync();
+        await LoadSalleReservation();
+    }
+
+    public async Task LoadSalleReservation()
+    {
+        SalleReservations = await salleReservationsServices.GetSalleReservationsAsync();
+    }
+
+    public void CreateSalleReservation()
+    {
+        navigationManager.NavigateTo("/SalleReservations/Create");
+    }
+
+    public async Task DeleteDep(int id)
+    {
+        var result = await salleReservationsServices.DeleteSalleReservation(id);
+        if (result)
+            await LoadSalleReservation();
+    }
+
+    // Fonction pour récupérer le nom de la salle à partir du SalleId
+    public string GetSalleName(int salleId)
+    {
+        var salle = Salles.FirstOrDefault(s => s.SalleID == salleId);
+        return salle != null ? salle.SalleName : "Salle inconnue";
+    }
+}

@@ -1,0 +1,119 @@
+@page "/Salles/Details/{Id:int}"
+@inject SallesServices sallesServices
+@inject NavigationManager NavigationManager
+
+<PageTitle>Détails de la Salle</PageTitle>
+
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            @if (isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-success" role="status"></div>
+                    <p class="mt-3">Chargement des détails...</p>
+                </div>
+            }
+            else if (Salle == null)
+            {
+                <div class="alert alert-danger text-center py-5">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                    <h4>Salle introuvable</h4>
+                    <a href="/Salles" class="btn btn-primary mt-3">Retour à la liste</a>
+                </div>
+            }
+            else
+            {
+                <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+                    <div class="card-header bg-success text-white text-center py-4">
+                        <i class="fas fa-door-open fa-4x mb-3"></i>
+                        <h3 class="mb-0 fw-bold">@Salle.SalleName</h3>
+                    </div>
+                    <div class="card-body p-5">
+                        <div class="row g-4">
+                            <div class="col-6">
+                                <div class="text-center p-4 bg-light rounded-3">
+                                    <h2 class="display-4 fw-bold text-primary mb-0">@Salle.Capacity</h2>
+                                    <p class="text-muted mb-0">Places</p>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center p-4 bg-light rounded-3">
+                                    @if (Salle.IsAvailable)
+                                    {
+                                        <i class="fas fa-check-circle fa-3x text-success mb-2"></i>
+                                        <p class="fw-bold text-success mb-0">Disponible</p>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-times-circle fa-3x text-danger mb-2"></i>
+                                        <p class="fw-bold text-danger mb-0">Occupée</p>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <div class="d-grid gap-2">
+                            <AuthorizeView Roles="Admin">
+                                <Authorized>
+                                    <a href="/Salles/Edit/@Salle.SalleID" class="btn btn-warning btn-lg">
+                                        <i class="fas fa-edit me-2"></i>Modifier
+                                    </a>
+                                    <button class="btn btn-danger btn-lg" @onclick="DeleteSalle">
+                                        <i class="fas fa-trash me-2"></i>Supprimer
+                                    </button>
+                                </Authorized>
+                            </AuthorizeView>
+                            @if (Salle.IsAvailable)
+                            {
+                                <a href="/SalleReservations/Create?salleId=@Salle.SalleID" class="btn btn-success btn-lg">
+                                    <i class="fas fa-calendar-plus me-2"></i>Réserver cette salle
+                                </a>
+                            }
+                            <a href="/Salles" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Retour à la liste
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    public Salle? Salle { get; set; }
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Salle = await sallesServices.GetSalleAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task DeleteSalle()
+    {
+        if (Salle == null) return;
+        
+        var success = await sallesServices.DeleteSalle(Salle.SalleID);
+        if (success)
+        {
+            NavigationManager.NavigateTo("/Salles");
+        }
+    }
+}

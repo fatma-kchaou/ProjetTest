@@ -1,0 +1,102 @@
+﻿@page "/Livres/Details/{Id:int}"
+@inject LivresServices LivresServices
+@inject AuthServices AuthServices
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject CategoriesServices CategoriesServices
+
+<PageTitle>Détails du Livre</PageTitle>
+
+<div class="container my-5">
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-3">Chargement du livre...</p>
+        </div>
+    }
+    else if (Livre == null)
+    {
+        <div class="alert alert-danger text-center">
+            Livre non trouvé.
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-lg">
+            @if (!string.IsNullOrEmpty(Livre.Image))
+            {
+                <img src="@Livre.Image" class="card-img-top" alt="@Livre.Title" style="max-height: 400px; object-fit: contain;" />
+            }
+            <div class="card-body">
+                <h2 class="card-title text-primary fw-bold">@Livre.Title</h2>
+                <h5 class="text-muted">Par @Livre.Author • Année : @Livre.Year</h5>
+                <hr />
+                <p><strong>Statut :</strong> 
+                    @if (Livre.IsBorrowed)
+                    {
+                        <span class="badge bg-danger">Emprunté</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success">Disponible</span>
+                    }
+                </p>
+                <p><strong>Ajouté le :</strong> @Livre.CreatedAt.ToShortDateString()</p>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+                <button class="btn btn-secondary me-2" @onclick='() => NavigationManager.NavigateTo("/Livres")'>
+                    ← Retour à la liste
+                </button>
+
+
+                <AuthorizeView Roles="Admin">
+    <Authorized>
+                    <a href="/Livres/Edit/@Livre.LivreID" class="btn btn-warning me-2">
+                        <i class="fas fa-edit"></i> Modifier
+                    </a>
+                    <button class="btn btn-danger" @onclick="() => DeleteLivre()">
+                        <i class="fas fa-trash"></i> Supprimer
+                    </button>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    public Livre? Livre { get; set; }
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Livre = await LivresServices.GetLivreAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur chargement livre {Id} : {ex.Message}");
+            Livre = null;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task DeleteLivre()
+    {
+        var confirm = await JSRuntime.InvokeAsync<bool>("confirm", "Voulez-vous vraiment supprimer ce livre ?");
+        if (confirm)
+        {
+            var success = await LivresServices.DeleteLivre(Id);
+            if (success)
+            {
+                NavigationManager.NavigateTo("/livres");
+            }
+        }
+    }
+}

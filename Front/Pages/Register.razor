@@ -1,0 +1,100 @@
+﻿@page "/register"
+@inject AuthServices AuthServices
+@inject NavigationManager NavigationManager
+@using API.DTOs
+
+<PageTitle>Inscription - Bibliothèque Centrale</PageTitle>
+
+<!-- Fond blanc pour toute la page -->
+<div class="min-vh-100 d-flex align-items-center justify-content-center bg-white">
+    <div class="card shadow-lg border-0 rounded-4" style="max-width: 500px; width: 100%;">
+        <div class="card-body p-5">
+            <div class="text-center mb-4">
+                <i class="fas fa-user-plus fa-4x text-success mb-3"></i>
+                <h3 class="fw-bold text-success">Créer un compte</h3>
+                <p class="text-muted">Rejoignez la Bibliothèque Centrale</p>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Message))
+            {
+                <div class="alert @(IsSuccess ? "alert-success" : "alert-danger") rounded-3">
+                    <i class="fas @(IsSuccess ? "fa-check-circle" : "fa-exclamation-triangle")"></i> @Message
+                </div>
+            }
+
+            <EditForm Model="@RegisterModel" OnValidSubmit="@HandleRegister">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger mb-3" />
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Nom d'utilisateur</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-user text-success"></i></span>
+                        <InputText @bind-Value="RegisterModel.Username" class="form-control" placeholder="Choisissez un username" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Email</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-envelope text-success"></i></span>
+                        <InputText type="email" @bind-Value="RegisterModel.Email" class="form-control" placeholder="votre@email.com" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Mot de passe</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-lock text-success"></i></span>
+                        <InputText type="password" @bind-Value="RegisterModel.Password" class="form-control" placeholder="Minimum 6 caractères" />
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Confirmer le mot de passe</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light"><i class="fas fa-lock text-success"></i></span>
+                        <InputText type="password" @bind-Value="ConfirmPassword" class="form-control" placeholder="Répétez le mot de passe" />
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success btn-lg w-100 mb-3 shadow-sm">
+                    <i class="fas fa-user-plus"></i> S'inscrire
+                </button>
+            </EditForm>
+
+            <div class="text-center mt-3">
+                <p class="mb-0 text-muted">
+                    Déjà membre ?
+                    <a href="/login" class="fw-bold text-success text-decoration-none">Se connecter</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    public NewUserDTO RegisterModel { get; set; } = new();
+    public string ConfirmPassword { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public bool IsSuccess { get; set; }
+
+    private async Task HandleRegister()
+    {
+        if (RegisterModel.Password != ConfirmPassword)
+        {
+            Message = "Les mots de passe ne correspondent pas.";
+            IsSuccess = false;
+            return;
+        }
+
+        var (success, message) = await AuthServices.register(RegisterModel);
+        Message = message;
+        IsSuccess = success;
+
+        if (success)
+        {
+            NavigationManager.NavigateTo("/login");
+        }
+    }
+}

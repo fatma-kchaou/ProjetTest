@@ -1,0 +1,126 @@
+﻿@page "/SalleReservations/Create"
+@attribute [Authorize(Roles = "Admin,Client")]
+@inject NavigationManager navigationManager
+@inject SalleReservationsServices salleReservationsServices
+@inject SallesServices sallesServices
+@inject AuthServices AuthServices
+
+<PageTitle>Créer une Réservation</PageTitle>
+<CascadingAuthenticationState>
+        <AuthorizeView >
+
+        <Authorized Context="authContext">
+<div class="container my-5">
+    <h3 class="text-center text-success mb-4">➕ Créer une réservation de salle</h3>
+
+    @if (Salles == null)
+    {
+        <p><em>Chargement des salles...</em></p>
+    }
+    else if (!Salles.Any())
+    {
+        <p class="text-muted">Aucune salle disponible pour le moment.</p>
+    }
+    else
+    {
+                    <EditForm Model="SalleReservation">
+                        <div class="mb-3">
+                            <label class="form-label">Salle</label>
+                            <InputSelect @bind-Value="SalleReservation.SalleId" class="form-select" @onchange="OnSalleChanged">
+                                <option value="0">-- Choisir une salle --</option>
+                                @foreach (var salle in Salles)
+                                {
+                                    <option value="@salle.SalleID">@salle.SalleName (Capacité: @salle.Capacity)</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <button type="button" class="btn btn-success" @onclick="handleSubmit">Réserver</button>
+                    </EditForm>
+
+    }
+</div>
+        </Authorized>
+
+        <NotAuthorized>
+            <div class="container my-5 text-center">
+                <div class="alert alert-danger shadow-lg p-5">
+                    <h2 class="text-danger mb-4">🚫 Accès refusé</h2>
+                    <p class="lead">
+                        Vous n'avez pas les droits nécessaires pour accéder à cette page.
+                    </p>
+                    <p>
+                        Seuls les utilisateurs connectée peuvent voir le tableau de bord.
+                    </p>
+                    <NavLink class="btn btn-primary btn-lg mt-3" href="/login">
+                        Se connecter
+                    </NavLink>
+                </div>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+
+</CascadingAuthenticationState>
+@code {
+    public SalleReservation SalleReservation { get; set; } = new SalleReservation();
+    public List<Salle> Salles { get; set; } = new List<Salle>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        SalleReservation = new SalleReservation
+        {
+            ReservedAt = DateTime.UtcNow,
+            SalleReservationName = "Réservation", // valeur par défaut
+            SalleId = 0
+        };
+
+        try
+        {
+            Salles = await sallesServices.GetSallesDisponiblesAsync();
+        }
+        catch
+        {
+            Salles = new List<Salle>();
+        }
+    }
+
+
+
+
+    public async Task handleSubmit()
+    {
+        if (SalleReservation.SalleId == 0 || string.IsNullOrEmpty(SalleReservation.SalleReservationName))
+            return; // validation
+
+        // Assure-toi que ReservedAt est défini
+        if (SalleReservation.ReservedAt == default)
+            SalleReservation.ReservedAt = DateTime.UtcNow;
+
+        var result = await salleReservationsServices.CreateSalleReservation(SalleReservation);
+
+        if (result != null)
+        {
+            await sallesServices.ReserveSalle(SalleReservation.SalleId);
+            navigationManager.NavigateTo("/SalleReservations");
+        }
+    }
+
+    private async Task Logout()
+    {
+        await AuthServices.Logout();
+        navigationManager.NavigateTo("/login", forceLoad: true);
+    }
+    private void OnSalleChanged(ChangeEventArgs e)
+    {
+        int selectedId = int.Parse(e.Value.ToString());
+        SalleReservation.SalleId = selectedId;
+
+        var salle = Salles.FirstOrDefault(s => s.SalleID == selectedId);
+        if (salle != null)
+        {
+            // Remplit automatiquement le nom de la réservation avec le nom de la salle
+            SalleReservation.SalleReservationName = salle.SalleName;
+        }
+    }
+
+}

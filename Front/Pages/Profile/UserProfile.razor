@@ -1,0 +1,193 @@
+@page "/Profile"
+@attribute [Authorize]
+@inject AuthServices AuthServices
+@inject BorrowRecordsServices BorrowRecordsServices
+@inject SalleReservationsServices SalleReservationsServices
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Mon Profil</PageTitle>
+
+<CascadingAuthenticationState>
+    <AuthorizeView>
+        <Authorized Context="authContext">
+            <div class="container my-5">
+                <div class="row">
+                    <!-- Carte de profil -->
+                    <div class="col-md-4 mb-4">
+                        <div class="card shadow-lg border-0 rounded-4 text-center">
+                            <div class="card-body p-5">
+                                <div class="mb-4">
+                                    <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 100px; height: 100px;">
+                                        <i class="fas fa-user fa-3x text-white"></i>
+                                    </div>
+                                </div>
+                                <h3 class="fw-bold mb-2">@authContext.User.Identity?.Name</h3>
+                                <div class="mb-3">
+                                    @foreach (var role in authContext.User.Claims.Where(c => c.Type.Contains("role")))
+                                    {
+                                        <span class="badge bg-success fs-6 px-3 py-2">@role.Value</span>
+                                    }
+                                </div>
+                                <hr />
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-danger" @onclick="Logout">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistiques et activité -->
+                    <div class="col-md-8">
+                        <!-- Statistiques -->
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-6">
+                                <div class="card bg-warning text-dark shadow h-100">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-book-reader fa-3x mb-3"></i>
+                                        <h2 class="display-4 fw-bold">@BorrowRecords.Count</h2>
+                                        <p class="mb-0 fs-5">Emprunts</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card bg-primary text-white shadow h-100">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-calendar-check fa-3x mb-3"></i>
+                                        <h2 class="display-4 fw-bold">@Reservations.Count</h2>
+                                        <p class="mb-0 fs-5">Réservations</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Emprunts récents -->
+                        <div class="card shadow-lg border-0 rounded-4 mb-4">
+                            <div class="card-header bg-warning text-dark py-3">
+                                <h5 class="mb-0 fw-bold"><i class="fas fa-book me-2"></i>Mes Emprunts Récents</h5>
+                            </div>
+                            <div class="card-body">
+                                @if (isLoading)
+                                {
+                                    <div class="text-center py-3">
+                                        <div class="spinner-border text-warning" role="status"></div>
+                                    </div>
+                                }
+                                else if (!BorrowRecords.Any())
+                                {
+                                    <p class="text-muted text-center py-3">Aucun emprunt pour le moment</p>
+                                }
+                                else
+                                {
+                                    <div class="list-group list-group-flush">
+                                        @foreach (var borrow in BorrowRecords.Take(5))
+                                        {
+                                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <h6 class="mb-1">@borrow.Livre?.Title</h6>
+                                                    <small class="text-muted">Emprunté le @borrow.BorrowDate.ToShortDateString()</small>
+                                                </div>
+                                                <span class="badge @(borrow.ReturnDate.HasValue ? "bg-success" : "bg-warning")">
+                                                    @(borrow.ReturnDate.HasValue ? "Retourné" : "En cours")
+                                                </span>
+                                            </div>
+                                        }
+                                    </div>
+                                    @if (BorrowRecords.Count > 5)
+                                    {
+                                        <div class="text-center mt-3">
+                                            <a href="/BorrowRecords" class="btn btn-outline-warning btn-sm">Voir tous les emprunts</a>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Réservations récentes -->
+                        <div class="card shadow-lg border-0 rounded-4">
+                            <div class="card-header bg-primary text-white py-3">
+                                <h5 class="mb-0 fw-bold"><i class="fas fa-calendar-alt me-2"></i>Mes Réservations Récentes</h5>
+                            </div>
+                            <div class="card-body">
+                                @if (isLoading)
+                                {
+                                    <div class="text-center py-3">
+                                        <div class="spinner-border text-primary" role="status"></div>
+                                    </div>
+                                }
+                                else if (!Reservations.Any())
+                                {
+                                    <p class="text-muted text-center py-3">Aucune réservation pour le moment</p>
+                                }
+                                else
+                                {
+                                    <div class="list-group list-group-flush">
+                                        @foreach (var reservation in Reservations.Take(5))
+                                        {
+                                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <h6 class="mb-1">@reservation.SalleReservationName</h6>
+                                                    <small class="text-muted">Réservé le @reservation.ReservedAt.ToShortDateString()</small>
+                                                </div>
+                                                <span class="badge @(reservation.ReleasedAt.HasValue ? "bg-success" : "bg-primary")">
+                                                    @(reservation.ReleasedAt.HasValue ? "Terminée" : "Active")
+                                                </span>
+                                            </div>
+                                        }
+                                    </div>
+                                    @if (Reservations.Count > 5)
+                                    {
+                                        <div class="text-center mt-3">
+                                            <a href="/SalleReservations" class="btn btn-outline-primary btn-sm">Voir toutes les réservations</a>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Authorized>
+
+        <NotAuthorized>
+            <div class="container my-5 text-center">
+                <div class="alert alert-danger shadow-lg p-5">
+                    <h2 class="text-danger mb-4">🚫 Accès refusé</h2>
+                    <p class="lead">Vous devez être connecté pour accéder à votre profil.</p>
+                    <NavLink class="btn btn-primary btn-lg mt-3" href="/login">Se connecter</NavLink>
+                </div>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+@code {
+    public List<BorrowRecord> BorrowRecords { get; set; } = new();
+    public List<SalleReservation> Reservations { get; set; } = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            BorrowRecords = await BorrowRecordsServices.GetBorrowRecordsAsync() ?? new List<BorrowRecord>();
+            Reservations = await SalleReservationsServices.GetSalleReservationsAsync() ?? new List<SalleReservation>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task Logout()
+    {
+        await AuthServices.Logout();
+        NavigationManager.NavigateTo("/login", forceLoad: true);
+    }
+}

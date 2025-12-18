@@ -1,0 +1,105 @@
+﻿@page "/Dashboard"
+@attribute [Authorize(Roles = "Admin")]  
+@inject LivresServices LivresServices
+@inject BorrowRecordsServices BorrowRecordsServices
+@inject CategoriesServices CategoriesServices
+@inject SallesServices SallesServices
+@inject SalleReservationsServices SalleReservationsServices
+@inject NavigationManager NavigationManager
+@inject AuthServices AuthServices
+
+<PageTitle>Tableau de Bord - Administration</PageTitle>
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Admin">
+        <Authorized Context="authContext">
+            <div class="container my-5">
+                <!-- HEADER -->
+                <div class="d-flex justify-content-between align-items-center mb-5">
+                    <div>
+                        <h1 class="fw-bold text-primary mb-1">
+                            <i class="fas fa-chart-line me-2"></i>Tableau de Bord
+                        </h1>
+                        <p class="text-muted mb-0">Administration du système</p>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="badge bg-light text-dark px-3 py-2 shadow-sm">
+                            👋 @authContext.User.Identity?.Name
+                        </span>
+                        <button class="btn btn-outline-danger" @onclick="Logout">
+                            <i class="fas fa-sign-out-alt me-1"></i> Déconnexion
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STAT CARDS -->
+                <div class="row g-4">
+                    @DashboardCard("Livres", LivresCount, "fas fa-book", "primary")
+                    @DashboardCard("Catégories", CategoriesCount, "fas fa-tags", "success")
+                    @DashboardCard("Emprunts actifs", BorrowsCount, "fas fa-book-reader", "warning")
+                    @DashboardCard("Réservations salles", ReservationsCount, "fas fa-door-open", "info")
+                </div>
+            </div>
+
+        </Authorized>
+
+        <NotAuthorized>
+            <div class="container my-5 text-center">
+                <div class="alert alert-danger shadow-lg p-5">
+                    <h2 class="text-danger mb-4">🚫 Accès refusé</h2>
+                    <p class="lead">
+                        Vous n'avez pas les droits nécessaires pour accéder à cette page.
+                    </p>
+                    <p>
+                        Seuls les administrateurs peuvent voir le tableau de bord.
+                    </p>
+                    <NavLink class="btn btn-primary btn-lg mt-3" href="/login">
+                        Se connecter
+                    </NavLink>
+
+                </div>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+@code {
+    public int LivresCount { get; set; }
+    public int CategoriesCount { get; set; }
+    public int BorrowsCount { get; set; }
+    public int ReservationsCount { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Ces appels ne seront exécutés que si l'utilisateur est autorisé (Admin)
+        var livres = await LivresServices.GetLivresAsync();
+        LivresCount = livres?.Count ?? 0;
+
+        var categories = await CategoriesServices.GetCategoriesAsync();
+        CategoriesCount = categories?.Count ?? 0;
+
+        var borrows = await BorrowRecordsServices.GetBorrowRecordsAsync();
+        BorrowsCount = borrows?.Count ?? 0;
+
+        var reservations = await SalleReservationsServices.GetSalleReservationsAsync();
+        ReservationsCount = reservations?.Count ?? 0;
+    }
+    RenderFragment DashboardCard(string title, int value, string icon, string color) => @<div class="col-md-3">
+        <div class="card border-0 shadow-lg h-100 dashboard-card">
+            <div class="card-body text-center">
+                <div class="icon-circle bg-@color text-white mb-3 mx-auto">
+                    <i class="@icon"></i>
+                </div>
+                <h2 class="fw-bold">@value</h2>
+                <p class="text-muted mb-0">@title</p>
+            </div>
+        </div>
+    </div>;
+
+    private async Task Logout()
+    {
+        await AuthServices.Logout();
+        NavigationManager.NavigateTo("/login", forceLoad: true);
+    }
+}

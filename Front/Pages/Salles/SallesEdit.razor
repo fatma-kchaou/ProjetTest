@@ -1,0 +1,157 @@
+@page "/Salles/Edit/{Id:int}"
+@attribute [Authorize(Roles = "Admin")]
+@inject SallesServices sallesServices
+@inject NavigationManager NavigationManager
+
+<PageTitle>Modifier la Salle</PageTitle>
+
+<CascadingAuthenticationState>
+    <AuthorizeView Roles="Admin">
+        <Authorized Context="authContext">
+            <div class="container my-5">
+                <div class="row justify-content-center">
+                    <div class="col-md-8 col-lg-6">
+                        <div class="card shadow-lg border-0 rounded-4">
+                            <div class="card-header bg-warning text-dark text-center py-4">
+                                <h3 class="mb-0 fw-bold">
+                                    <i class="fas fa-edit me-2"></i>Modifier la Salle
+                                </h3>
+                            </div>
+                            <div class="card-body p-5">
+                                @if (isLoading)
+                                {
+                                    <div class="text-center py-5">
+                                        <div class="spinner-border text-warning" role="status"></div>
+                                        <p class="mt-3">Chargement...</p>
+                                    </div>
+                                }
+                                else if (Salle == null)
+                                {
+                                    <div class="alert alert-danger">Salle introuvable.</div>
+                                }
+                                else
+                                {
+                                    @if (!string.IsNullOrEmpty(errorMessage))
+                                    {
+                                        <div class="alert alert-danger">@errorMessage</div>
+                                    }
+
+                                    <EditForm Model="Salle" OnValidSubmit="HandleSubmit">
+                                        <DataAnnotationsValidator />
+                                        <ValidationSummary class="text-danger mb-3" />
+
+                                        <div class="mb-4">
+                                            <label class="form-label fw-semibold">Nom de la salle</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light">
+                                                    <i class="fas fa-door-open text-warning"></i>
+                                                </span>
+                                                <InputText @bind-Value="Salle.SalleName" class="form-control" />
+                                            </div>
+                                            <ValidationMessage For="@(() => Salle.SalleName)" class="text-danger" />
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <label class="form-label fw-semibold">Capacité</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light">
+                                                    <i class="fas fa-users text-warning"></i>
+                                                </span>
+                                                <InputNumber @bind-Value="Salle.Capacity" class="form-control" />
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <div class="form-check form-switch">
+                                                <InputCheckbox @bind-Value="Salle.IsAvailable" class="form-check-input" id="isAvailable" />
+                                                <label class="form-check-label fw-semibold" for="isAvailable">Disponible</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="d-grid gap-2">
+                                            <button type="submit" class="btn btn-warning btn-lg shadow-sm" disabled="@isSubmitting">
+                                                @if (isSubmitting)
+                                                {
+                                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                                }
+                                                <i class="fas fa-save me-2"></i>Enregistrer
+                                            </button>
+                                            <a href="/Salles" class="btn btn-outline-secondary">
+                                                <i class="fas fa-arrow-left me-2"></i>Retour
+                                            </a>
+                                        </div>
+                                    </EditForm>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Authorized>
+
+        <NotAuthorized>
+            <div class="container my-5 text-center">
+                <div class="alert alert-danger shadow-lg p-5">
+                    <h2 class="text-danger mb-4">🚫 Accès refusé</h2>
+                    <p class="lead">Seuls les administrateurs peuvent modifier les salles.</p>
+                    <NavLink class="btn btn-primary btn-lg mt-3" href="/login">Se connecter</NavLink>
+                </div>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+</CascadingAuthenticationState>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    public Salle? Salle { get; set; }
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Salle = await sallesServices.GetSalleAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erreur lors du chargement: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (Salle == null) return;
+        
+        isSubmitting = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var success = await sallesServices.UpdateSalle(Salle);
+            if (success)
+            {
+                NavigationManager.NavigateTo("/Salles");
+            }
+            else
+            {
+                errorMessage = "Erreur lors de la mise à jour de la salle.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erreur: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

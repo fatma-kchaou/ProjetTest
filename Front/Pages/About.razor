@@ -1,0 +1,102 @@
+﻿@page "/about"
+<PageTitle>À propos - Bibliothèque Centrale</PageTitle>
+
+<!-- HERO avec image locale -->
+<div class="about-hero">
+    <div class="container text-center">
+        <h1 class="display-3 fw-bold text-white mb-4">
+            Bibliothèque <span class="text-gradient">Centrale</span>
+        </h1>
+        <p class="lead text-white opacity-90">Une gestion moderne au service du savoir</p>
+    </div>
+</div>
+
+<div class="container my-5">
+
+    <!-- Section principale avec image -->
+    <div class="row align-items-center g-5 mb-5">
+        <div class="col-lg-6 order-lg-2">
+            <img src="/images/about/livre.jpg"
+                 alt="Bibliothèque moderne"
+                 class="img-fluid rounded-4 shadow-lg about-main-img" />
+        </div>
+        <div class="col-lg-6 order-lg-1">
+            <h2 class="mb-4">Notre vision</h2>
+            <p class="fs-5 text-muted lh-lg">
+                Une bibliothèque n’est plus seulement un lieu physique.
+                C’est un <strong>écosystème numérique</strong> où chaque livre, chaque lecteur
+                et chaque salle sont connectés pour faciliter l’accès au savoir.
+            </p>
+            <div class="row g-4 mt-4">
+                <div class="col-6">
+                    <h3 class="text-primary fw-bold">500+</h3>
+                    <p class="text-muted">Ouvrages disponibles</p>
+                </div>
+                <div class="col-6">
+                    <h3 class="text-success fw-bold">24/7</h3>
+                    <p class="text-muted">Accès en ligne</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fonctionnalités avec images -->
+    <h2 class="text-center mb-5">Ce que nous offrons</h2>
+    <div class="row g-5">
+
+        <div class="col-md-4">
+            <div class="feature-card text-center">
+                <img src="/images/about/search.jpg"
+                     alt="Recherche" class="feature-img mb-3" />
+                <h5>Recherche avancée</h5>
+                <p>Trouvez n’importe quel livre en quelques secondes</p>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="feature-card text-center">
+                <img src="/images/about/borrow.jpg"
+                     alt="Emprunts" class="feature-img mb-3" />
+                <h5>Gestion des emprunts</h5>
+                <p>Suivi clair et notifications automatiques</p>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="feature-card text-center">
+                <img src="/images/about/room.jpg"
+                     alt="Salles" class="feature-img mb-3" />
+                <h5>Réservation de salles</h5>
+                <p>Planning visuel et sans conflit</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Image ambiance -->
+    <div class="text-center my-5">
+        <img src="/images/about/ambiance.jpg"
+             alt="Ambiance lecture"
+             class="img-fluid rounded-4 shadow-lg w-100"
+             style="max-height: 500px; object-fit: cover;" />
+    </div>
+
+    <!-- Équipe -->
+    <div class="text-center py-5 bg-light rounded-4">
+        <h3 class="mb-4">Développé avec passion</h3>
+        <p class="fs-5 text-muted mb-5">
+            Par l'équipe de développement - Promotion 2025
+        </p>
+        <img src="/images/about/team.jpg"
+             alt="Équipe de développeurs"
+             class="img-fluid rounded-circle shadow-lg mb-4"
+             style="width: 180px; height: 180px; object-fit: cover;" />
+        <p class="text-muted fst-italic">
+            "Un livre ouvert est un cerveau qui parle ; fermé, un ami qui attend."
+        </p>
+    </div>
+</div>
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+}
